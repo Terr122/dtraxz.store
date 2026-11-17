@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#E0A100"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dtrax POS"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Dtrax Poultry Supply</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: sticky top bar with three tabs (Sell, Stock, Reports). Sell is a product grid beside a cart; it stacks on phones. */
+:root{
+  --bg:#EFF1EC; --surface:#FFFFFF; --surface2:#F6F7F3; --line:#DADFD7;
+  --ink:#1D2420; --muted:#5C685F;
+  --accent:#E0A100; --accent-ink:#241A00; --accent-soft:#FBEFC4;
+  --ok:#2C6B4D; --ok-soft:#DCEEE4; --warn:#9A5B00; --warn-soft:#FBE7C6; --bad:#A8372C; --bad-soft:#F7DAD6;
+  --head:'Space Grotesk','Inter',system-ui,sans-serif;
+  --body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121614; --surface:#1B211E; --surface2:#222A26; --line:#323C36;
+    --ink:#E9EEE9; --muted:#9AA79F;
+    --accent:#F0B41A; --accent-ink:#241A00; --accent-soft:#3A3012;
+    --ok:#6FCB9C; --ok-soft:#1F3A2D; --warn:#F0B35A; --warn-soft:#3C2E14; --bad:#F08A7E; --bad-soft:#40201C;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1B211E; --surface2:#222A26; --line:#323C36;
+  --ink:#E9EEE9; --muted:#9AA79F;
+  --accent:#F0B41A; --accent-ink:#241A00; --accent-soft:#3A3012;
+  --ok:#6FCB9C; --ok-soft:#1F3A2D; --warn:#F0B35A; --warn-soft:#3C2E14; --bad:#F08A7E; --bad-soft:#40201C;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 24px}
+body.has-bar{padding-bottom:84px}
+h1,h2,h3{font-family:var(--head);margin:0;text-wrap:balance}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:12px 0 10px;border-bottom:1px solid var(--line);margin-bottom:16px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.topbar .row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{font-family:var(--head);font-weight:700;font-size:18px;letter-spacing:-.01em;min-width:0}
+.brand small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted);letter-spacing:0}
+.tabs{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tab{border:0;background:transparent;padding:7px 14px;border-radius:8px;font-weight:600;color:var(--muted);display:flex;gap:6px;align-items:center}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.tab .pip{background:var(--bad);color:#fff;border-radius:99px;font-size:11px;padding:0 6px;line-height:17px;min-width:17px;text-align:center}
+.tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.banner{background:var(--warn-soft);color:var(--warn);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-weight:500}
+.banner[hidden]{display:none}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.btn.primary:hover{filter:brightness(.95)}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ro [data-write]{display:none!important}
+.view[hidden]{display:none}
+
+/* Sell */
+.pos{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+@media (min-width:900px){.pos{grid-template-columns:minmax(0,1fr) 380px}.cartbar{display:none!important}.cartcol{position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px)}}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.search{flex:1 1 220px;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-weight:500;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pcard{display:flex;flex-direction:column;gap:6px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.pcard:hover:not(:disabled){border-color:var(--accent)}
+.pcard:disabled{opacity:.55;cursor:not-allowed}
+.pcard .nm{font-weight:600;overflow-wrap:anywhere}
+.pcard .pr{font-family:var(--head);font-weight:700;font-size:17px}
+.pcard .pr small{font-family:var(--body);font-weight:400;color:var(--muted);font-size:12px}
+.badge{display:inline-block;border-radius:99px;padding:1px 8px;font-size:12px;font-weight:600;background:var(--ok-soft);color:var(--ok);width:max-content}
+.badge.low{background:var(--warn-soft);color:var(--warn)}
+.badge.out{background:var(--bad-soft);color:var(--bad)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.panel h2{font-size:16px;margin-bottom:10px}
+.empty{color:var(--muted);padding:18px 4px;text-align:center}
+.line{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.line .nm{font-weight:600;overflow-wrap:anywhere}
+.line .sub{color:var(--muted);font-size:12px}
+.line .tot{font-weight:600;text-align:right;min-width:72px}
+.stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stepper button{border:0;background:var(--surface2);width:30px;height:30px;font-size:17px;line-height:1}
+.stepper input{width:48px;text-align:center;border:0;background:var(--surface);height:30px;-moz-appearance:textfield}
+.x{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;padding:0 4px}
+.sum{display:grid;gap:6px;margin:12px 0}
+.sum .r{display:flex;justify-content:space-between;gap:10px}
+.sum .grand{font-family:var(--head);font-size:24px;font-weight:700;border-top:1px dashed var(--line);padding-top:8px}
+.field{display:grid;gap:4px;margin-bottom:10px}
+.field label{font-size:12px;font-weight:600;color:var(--muted)}
+.field input,.field select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);width:100%;min-width:0}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--surface);padding:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cartbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.cartbar[hidden]{display:none}
+.cartbar b{font-family:var(--head);font-size:18px}
+.cartbar .btn{background:var(--accent);color:var(--accent-ink);border:0}
+
+/* Tables */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:680px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;background:var(--surface2);white-space:nowrap}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:0}
+tr.rowlow td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+tr.rowout td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.head h2{font-size:20px}
+.eg{display:inline-block;font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px}
+
+/* Reports */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi span{display:block;color:var(--muted);font-size:12px;font-weight:600}
+.kpi b{font-family:var(--head);font-size:22px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-bottom:14px}
+.bars{display:flex;gap:8px;align-items:flex-end;height:150px;padding-top:18px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;gap:4px}
+.bar i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+.bar.sel i{background:var(--ink)}
+.bar small{color:var(--muted);font-size:11px}
+.bar em{font-style:normal;font-size:11px;font-weight:600}
+.list{display:grid}
+.li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li .mut{color:var(--muted);font-size:12px}
+.li button.lnk{border:0;background:none;text-align:left;padding:0;font-weight:600}
+
+.store{display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:99px;padding:3px 10px;color:var(--muted);background:var(--surface)}
+.store i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.store.local i{background:var(--ok)}
+.fileIn{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.note{color:var(--muted);font-size:13px;margin:0 0 10px}
+/* Modal */
+.ov{position:fixed;inset:0;background:rgba(10,14,12,.55);z-index:20;display:flex;align-items:flex-start;justify-content:center;overflow:auto;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.ov[hidden]{display:none}
+.modal{background:var(--surface);border-radius:14px;width:100%;max-width:460px;padding:18px;margin:auto;border:1px solid var(--line)}
+.modal h2{font-size:18px;margin-bottom:12px}
+.modal .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.rcpt{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;background:var(--surface2);border:1px dashed var(--line);border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:all}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-weight:600;z-index:30;max-width:90vw;text-align:center}
+.toast[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.no-print .printbtn{display:none!important}
+#printArea{display:none}
+.pa{font-family:'Inter',system-ui,sans-serif;color:#000;background:#fff;line-height:1.3}
+.pa h1{font-size:20px;margin:0 0 2px}
+.pa h2{font-size:14px;margin:14px 0 6px}
+.pa table{width:100%;border-collapse:collapse;min-width:0}
+.pa th,.pa td{padding:4px 6px;border:0;border-bottom:1px solid #999;font-size:12px;text-align:left;background:#fff;color:#000;text-transform:none;letter-spacing:0;white-space:normal}
+.pa th{font-weight:700;border-bottom:2px solid #000}
+.pa th.r,.pa td.r{text-align:right}
+.pa .meta{font-size:12px;margin-bottom:8px}
+.pa .kp{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.pa .kp div{border:1px solid #999;padding:6px 10px;font-size:12px}
+.pa .kp b{display:block;font-size:15px}
+.pa.cnt td{height:30px}
+.rc .c{text-align:center}
+.rc .row{display:flex;justify-content:space-between;gap:6px}
+.rc hr{border:0;border-top:1px dashed #000;margin:6px 0}
+.rc .it{font-weight:600}
+@media print{
+  html,body{background:#fff!important;color:#000!important;padding:0!important;margin:0!important}
+  body::before{display:none!important}
+  body>*{display:none!important}
+  body>#printArea{display:block!important}
+  #printArea.p-58{width:48mm;font-size:10px}
+  #printArea.p-80{width:72mm;font-size:12px}
+}
+
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px}
+[hidden]{display:none!important}
+img{max-width:100%}
+</style>
+
+</head><body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="row">
+      <div class="brand"><span id="shopName">Dtrax Poultry Supply</span><small>Inventory &amp; point of sale</small></div>
+      <span class="store" id="storeChip" title="Items and sales are saved on this device and work without internet"><i></i><b id="storeTxt">Connecting</b></span>
+      <button class="btn sm" id="installBtn" hidden>Install app</button>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="sell" aria-selected="true">Sell</button>
+        <button class="tab" role="tab" data-tab="stock" aria-selected="false">Stock <span class="pip" id="lowPip" hidden>0</span></button>
+        <button class="tab" role="tab" data-tab="reports" aria-selected="false">Reports</button>
+      </div>
+    </div>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="view" id="v-sell">
+    <div class="pos">
+      <div>
+        <div class="tools">
+          <input class="search" id="q" type="search" placeholder="Search item or SKU" aria-label="Search items" autocomplete="off">
+        </div>
+        <div class="chips" id="cats" style="margin-bottom:12px"></div>
+        <div class="grid" id="pgrid"></div>
+      </div>
+      <aside class="cartcol" id="cartcol">
+        <div class="panel">
+          <h2>Current sale</h2>
+          <div id="cartLines"></div>
+          <div class="sum num">
+            <div class="r"><span>Subtotal</span><span id="tSub">0.00</span></div>
+            <div class="r"><span>Discount</span><span><input id="disc" type="number" min="0" step="any" inputmode="decimal" placeholder="0" style="width:90px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);text-align:right" aria-label="Discount amount"></span></div>
+            <div class="r grand"><span>Total</span><span id="tTotal">0.00</span></div>
+          </div>
+          <div class="field"><label>Payment</label>
+            <div class="seg" id="method"><button type="button" data-m="Cash" aria-pressed="true">Cash</button><button type="button" data-m="E-wallet" aria-pressed="false">E-wallet</button></div>
+          </div>
+          <div class="two">
+            <div class="field" id="tendWrap"><label for="tend">Cash received</label><input id="tend" type="number" min="0" step="any" inputmode="decimal" placeholder="Exact"></div>
+            <div class="field"><label>Change</label><div class="num" id="chg" style="padding:8px 0;font-weight:600">0.00</div></div>
+          </div>
+          <div class="field"><label for="cust">Customer (optional)</label><input id="cust" type="text" placeholder="Name on receipt" autocomplete="off"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="clearCart" type="button">Clear</button>
+            <button class="btn primary" id="doSale" type="button" data-write style="flex:1">Complete sale</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="view" id="v-stock" hidden>
+    <div class="head">
+      <h2>Stock</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn printbtn" id="prList">Print list</button>
+        <button class="btn printbtn" id="prCount">Count sheet</button>
+        <button class="btn" id="tplX">Excel template</button>
+        <button class="btn" id="expStock">Export to Excel</button>
+        <button class="btn" id="impX" data-write>Import from Excel</button>
+        <button class="btn" id="rmEx" data-write hidden>Remove example items</button>
+        <button class="btn primary" data-act="addp" data-write>Add item</button>
+      </div>
+    </div>
+    <div class="tools">
+      <input class="search" id="sq" type="search" placeholder="Search item or SKU" aria-label="Search stock" autocomplete="off">
+      <div class="chips"><button class="chip" id="lowOnly" aria-pressed="false">Needs reorder only</button></div>
+    </div>
+    <div class="tw"><table><thead><tr><th>Item</th><th>Category</th><th class="r">Price</th><th class="r">Cost</th><th class="r">In stock</th><th class="r">Reorder at</th><th></th></tr></thead><tbody id="stockRows"></tbody></table></div>
+  </section>
+
+  <section class="view" id="v-reports" hidden>
+    <div class="head">
+      <h2>Daily report</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="date" id="rday" aria-label="Report date" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)">
+        <button class="btn printbtn" id="prDay">Print report</button>
+        <button class="btn" id="exportXlsx">Day to Excel</button>
+        <button class="btn" id="exportAll">Full backup (Excel)</button>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="cols">
+      <div class="panel"><h2>Last 7 days</h2><div class="bars" id="bars"></div></div>
+      <div class="panel"><h2>Items sold</h2><div class="list" id="sold"></div></div>
+    </div>
+    <div class="cols">
+      <div class="panel"><h2>Receipts</h2><div class="list" id="receipts"></div></div>
+      <div class="panel"><h2>Needs reorder</h2><div class="list" id="reorder"></div></div>
+    </div>
+    <div class="panel" data-write style="max-width:460px">
+      <h2>Shop settings</h2>
+      <form id="setForm">
+        <div class="two">
+          <div class="field"><label for="sName">Shop name</label><input id="sName" type="text"></div>
+          <div class="field"><label for="sCur">Currency symbol</label><input id="sCur" type="text" maxlength="4"></div>
+        </div>
+        <div class="field"><label for="sAddr">Address on receipts</label><input id="sAddr" type="text"></div>
+        <div class="two"><div class="field"><label for="sPhone">Phone on receipts</label><input id="sPhone" type="text"></div>
+        <div class="field printbtn"><label for="sPaper">Receipt paper</label><select id="sPaper"><option value="80">80 mm roll</option><option value="58">58 mm roll</option><option value="A4">A4 sheet</option></select></div></div>
+        <div class="field"><label for="sFoot">Receipt footer</label><input id="sFoot" type="text" placeholder="Thank you!"></div>
+        <div class="field printbtn"><label style="display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink)"><input type="checkbox" id="sAuto" style="width:auto"> Print the receipt right after each sale</label></div>
+        <button class="btn" type="submit">Save settings</button>
+      </form>
+    </div>
+  </section>
+</div>
+
+<div class="cartbar" id="cartbar" hidden><span id="cbCount"></span><b class="num" id="cbTotal"></b><button class="btn" id="goCart" type="button">View sale</button></div>
+<div class="ov" id="ov" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<input class="fileIn" type="file" id="fileX" accept=".xlsx,.xls,.csv" tabindex="-1" aria-label="Choose an Excel file">
+<div class="toast" id="toast" hidden></div>
+<div id="printArea" class="pa" aria-hidden="true"></div>
+<style id="pageStyle"></style>
+
+<script src="xlsx.full.min.js"></script>
+<script>
+(function(){
+"use strict";
+var $=function(s,r){return (r||document).querySelector(s)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var CATS=['Feed','Health','Equipment','Other'];
+var S={products:[],sales:[],settings:{shop:'Dtrax Poultry Supply',cur:'₱',addr:'',phone:'',foot:'',paper:'80',auto:false},cart:[],cat:'All',q:'',sq:'',lowOnly:false,
+  tab:'sell',method:'Cash',day:dayOf(Date.now()),ready:false,db:null,canWrite:true,dl:null,canPrint:true};
+
+function dayOf(ts){return new Date(ts).toLocaleDateString('en-CA')}
+function timeOf(ts){return new Date(ts).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}
+function n(v){var x=parseFloat(v);return isFinite(x)?x:0}
+function fmt(v){return S.settings.cur+Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+function qtyFmt(v){return Number(v).toLocaleString(undefined,{maximumFractionDigits:2})}
+function status(p){var s=n(p.stock);return s<=0?'out':(s<=n(p.reorder)?'low':'ok')}
+function prod(id){return S.products.filter(function(p){return p.id===id})[0]}
+var toastT;
+function toast(msg){var t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true},2600)}
+
+/* ---------- device-only fallback store (same calls as the shared database) ---------- */
+var SEED=[
+ ['ex-starter','Chick Starter Feed (50 kg)','FD-001','Feed','sack',24,1650,1480,8],
+ ['ex-grower','Broiler Grower Feed (50 kg)','FD-002','Feed','sack',6,1580,1410,8],
+ ['ex-layer','Layer Pellets (50 kg)','FD-003','Feed','sack',15,1520,1350,6],
+ ['ex-cracked','Cracked Corn','FD-004','Feed','kg',120,32,26,40],
+ ['ex-vitamins','Poultry Vitamins (100 g)','HL-001','Health','pack',30,85,60,10],
+ ['ex-dewormer','Dewormer (100 ml)','HL-002','Health','bottle',0,240,185,5],
+ ['ex-newcastle','Newcastle Vaccine (100 doses)','HL-003','Health','vial',12,320,250,6],
+ ['ex-drinker','Chick Drinker (1 L)','EQ-001','Equipment','pc',40,95,62,12],
+ ['ex-feeder','Hanging Feeder (10 kg)','EQ-002','Equipment','pc',18,380,290,6],
+ ['ex-bulb','Brooder Bulb (100 W)','EQ-003','Equipment','pc',4,160,115,10]
+];
+function makeLocalDb(){
+  var KEY='dtrax-pos-local-v1',store={},subs=[];
+  try{var raw=localStorage.getItem(KEY);if(raw)store=JSON.parse(raw)||{}}catch(e){store={}}
+  if(!store['meta/seeded']){
+    SEED.forEach(function(r){store['products/'+r[0]]={name:r[1],sku:r[2],category:r[3],unit:r[4],stock:r[5],price:r[6],cost:r[7],reorder:r[8],example:true}});
+    store['meta/seeded']={done:true};
+    store['settings/shop']={shop:'Dtrax Poultry Supply',cur:'₱'};
+  }
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
+  function seg(p){return p.split('/')}
+  function colOf(p){var a=seg(p);a.pop();return a.join('/')}
+  function notify(){save();subs.slice().forEach(function(f){f()})}
+  function snap(id,d){return {id:id,exists:!!d,data:function(){return d},metadata:{fromCache:false,hasPendingWrites:false}}}
+  function clone(o){return JSON.parse(JSON.stringify(o))}
+  function docRef(path){
+    var id=seg(path).pop();
+    return {id:id,path:path,
+      get:function(){return Promise.resolve(snap(id,store[path]&&clone(store[path])))},
+      set:function(d){store[path]=clone(d);notify();return Promise.resolve()},
+      update:function(d){if(!store[path])return Promise.reject({code:'invalid_argument'});Object.assign(store[path],clone(d));notify();return Promise.resolve()},
+      delete:function(){delete store[path];notify();return Promise.resolve()},
+      onSnapshot:function(next){var f=function(){next(snap(id,store[path]&&clone(store[path])))};subs.push(f);setTimeout(f,0);return function(){subs=subs.filter(function(x){return x!==f})}}};
+  }
+  function query(col,ord,lim){
+    function docs(){
+      var out=Object.keys(store).filter(function(p){return colOf(p)===col}).map(function(p){return snap(seg(p).pop(),clone(store[p]))});
+      if(ord)out.sort(function(a,b){var x=a.data()[ord.f],y=b.data()[ord.f];return ord.d==='desc'?y-x:x-y});
+      return lim?out.slice(0,lim):out;
+    }
+    var q={orderBy:function(f,d){return query(col,{f:f,d:d},lim)},limit:function(k){return query(col,ord,k)},
+      get:function(){var d=docs();return Promise.resolve({docs:d,size:d.length,empty:!d.length})},
+      onSnapshot:function(next){var f=function(){var d=docs();next({docs:d,size:d.length,empty:!d.length,metadata:{fromCache:false}})};subs.push(f);setTimeout(f,0);return function(){subs=subs.filter(function(x){return x!==f})}},
+      doc:function(id){return docRef(col+'/'+(id||('l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6))))}};
+    return q;
+  }
+  save();
+  return {doc:docRef,collection:function(c){return query(c)}};
+}
+function renderStore(){
+  $('#storeChip').className='store'+(S.local?' local':'');
+  $('#storeTxt').textContent=S.local?'Saved on this device':(S.stale?'Shared database \u00B7 syncing':'Shared database');
+}
+function why(e){
+  var c=e&&e.code;
+  if(c==='invalid_argument')return "Couldn't save. This account may not be allowed to change data.";
+  if(c==='quota_exceeded')return 'Storage is full. Delete some old records first.';
+  return "Couldn't save ("+(c||'error')+'). Try again.';
+}
+
+/* ---------- storage ---------- */
+function subscribe(){
+  var db=S.db;if(!db)return;
+  var timer=setTimeout(function(){if(!S.ready)banner('Still connecting to the shared database. Anything you add is kept and will sync once it connects.')},10000);
+  function done(){S.ready=true;clearTimeout(timer);renderBanner();renderStore();renderAll()}
+  function fail(e){clearTimeout(timer);banner('Saved data is unavailable ('+(e&&e.code||'error')+').')}
+  db.collection('products').onSnapshot(function(snap){
+    S.products=snap.docs.map(function(d){var o=d.data()||{};o.id=d.id;return o}).sort(function(a,b){return String(a.name).localeCompare(String(b.name))});
+    S.stale=!!snap.metadata.fromCache;done();
+  },fail);
+  db.collection('sales').orderBy('ts','desc').limit(1000).onSnapshot(function(snap){
+    S.sales=snap.docs.map(function(d){var o=d.data()||{};o.id=d.id;return o});renderReports();
+  },fail);
+  db.doc('settings/shop').onSnapshot(function(d){
+    if(d.exists){var o=d.data();S.settings.shop=o.shop||S.settings.shop;S.settings.cur=o.cur||S.settings.cur;S.settings.addr=o.addr||'';S.settings.phone=o.phone||'';S.settings.foot=o.foot||'';S.settings.paper=o.paper||'80';S.settings.auto=!!o.auto}
+    $('#shopName').textContent=S.settings.shop;renderAll();
+  },fail);
+}
+function banner(msg){var b=$('#banner');if(msg){b.textContent=msg;b.hidden=false}else b.hidden=true}
+function renderBanner(){
+  if(S.local){banner('');return}
+  if(!S.canWrite){banner('You can view stock and reports. Ask the owner for Contributor access to record sales or change stock.');return}
+  banner('');
+}
+
+/* ---------- render ---------- */
+function renderAll(){renderCats();renderGrid();renderCart();renderStock();renderReports();renderPip()}
+function renderPip(){
+  var c=S.products.filter(function(p){return status(p)!=='ok'}).length;
+  var el=$('#lowPip');el.textContent=c;el.hidden=!c;
+}
+function renderCats(){
+  var h=['All'].concat(CATS).map(function(c){return '<button class="chip" data-cat="'+esc(c)+'" aria-pressed="'+(S.cat===c)+'">'+esc(c)+'</button>'}).join('');
+  $('#cats').innerHTML=h;
+}
+function matches(p,q){q=q.trim().toLowerCase();return !q||String(p.name).toLowerCase().indexOf(q)>-1||String(p.sku||'').toLowerCase().indexOf(q)>-1}
+function renderGrid(){
+  var list=S.products.filter(function(p){return (S.cat==='All'||p.category===S.cat)&&matches(p,S.q)});
+  if(!list.length){
+    $('#pgrid').innerHTML='<div class="empty" style="grid-column:1/-1">'+(S.products.length?'No items match.':(S.ready?'No items yet. Open the Stock tab and add your first item.':'Loading items…'))+'</div>';return;
+  }
+  $('#pgrid').innerHTML=list.map(function(p){
+    var st=status(p),out=st==='out';
+    return '<button class="pcard" data-add="'+esc(p.id)+'"'+(out?' disabled':'')+'><span class="nm">'+esc(p.name)+'</span>'+
+      '<span class="pr num">'+fmt(p.price)+' <small>/ '+esc(p.unit||'pc')+'</small></span>'+
+      '<span class="badge '+(st==='ok'?'':st)+' num">'+(out?'Out of stock':qtyFmt(p.stock)+' left')+'</span></button>';
+  }).join('');
+}
+function cartTotals(){
+  var sub=0;S.cart.forEach(function(l){var p=prod(l.id);if(p)sub+=n(p.price)*l.qty});
+  var disc=Math.min(Math.max(n($('#disc').value),0),sub);
+  return {sub:sub,disc:disc,total:sub-disc};
+}
+function renderCart(){
+  S.cart=S.cart.filter(function(l){return prod(l.id)});
+  var box=$('#cartLines');
+  if(!S.cart.length)box.innerHTML='<div class="empty">Tap an item to start a sale.</div>';
+  else box.innerHTML=S.cart.map(function(l){
+    var p=prod(l.id);
+    return '<div class="line"><div><div class="nm">'+esc(p.name)+'</div><div class="sub num">'+fmt(p.price)+' / '+esc(p.unit||'pc')+'</div></div>'+
+      '<div class="stepper"><button type="button" data-dec="'+esc(l.id)+'" aria-label="Less">−</button><input type="number" min="1" step="any" value="'+l.qty+'" data-qty="'+esc(l.id)+'" aria-label="Quantity"><button type="button" data-inc="'+esc(l.id)+'" aria-label="More">+</button></div>'+
+      '<div style="display:flex;align-items:center;gap:2px"><span class="tot num">'+fmt(n(p.price)*l.qty)+'</span><button class="x" type="button" data-rm="'+esc(l.id)+'" aria-label="Remove">×</button></div></div>';
+  }).join('');
+  updateTotals();
+}
+function updateTotals(){
+  var t=cartTotals();
+  $('#tSub').textContent=fmt(t.sub);$('#tTotal').textContent=fmt(t.total);
+  var cash=S.method==='Cash';$('#tendWrap').style.visibility=cash?'visible':'hidden';
+  var tend=n($('#tend').value);
+  $('#chg').textContent=cash&&tend>=t.total&&tend>0?fmt(tend-t.total):fmt(0);
+  var count=S.cart.reduce(function(a,l){return a+l.qty},0);
+  var bar=$('#cartbar');var show=S.tab==='sell'&&count>0;
+  bar.hidden=!show;document.body.classList.toggle('has-bar',show);
+  $('#cbCount').textContent=qtyFmt(count)+(count===1?' item':' items');$('#cbTotal').textContent=fmt(t.total);
+}
+function stockBadge(p){var st=status(p);return '<span class="badge '+(st==='ok'?'':st)+' num">'+qtyFmt(p.stock)+' '+esc(p.unit||'')+'</span>'}
+function renderStock(){
+  var list=S.products.filter(function(p){return matches(p,S.sq)&&(!S.lowOnly||status(p)!=='ok')});
+  $('#rmEx').hidden=!S.products.some(function(p){return p.example});
+  if(!list.length){$('#stockRows').innerHTML='<tr><td colspan="7" class="empty">'+(S.products.length?'Nothing matches.':'No items yet. Use Add item.')+'</td></tr>';return}
+  $('#stockRows').innerHTML=list.map(function(p){
+    var st=status(p);
+    return '<tr class="'+(st==='low'?'rowlow':st==='out'?'rowout':'')+'"><td><b>'+esc(p.name)+'</b>'+(p.example?'<span class="eg">example</span>':'')+'<div class="mut" style="color:var(--muted);font-size:12px">'+esc(p.sku||'')+'</div></td>'+
+      '<td>'+esc(p.category||'')+'</td><td class="r num">'+fmt(p.price)+'<div style="color:var(--muted);font-size:12px">per '+esc(p.unit||'pc')+'</div></td><td class="r num">'+fmt(p.cost)+'</td>'+
+      '<td class="r">'+stockBadge(p)+'</td><td class="r num">'+qtyFmt(p.reorder||0)+'</td>'+
+      '<td><div class="acts"><button class="btn sm" data-recv="'+esc(p.id)+'" data-write>Receive</button><button class="btn sm" data-edit="'+esc(p.id)+'" data-write>Edit</button></div></td></tr>';
+  }).join('');
+}
+function saleCost(s){return (s.items||[]).reduce(function(a,i){return a+n(i.cost)*n(i.qty)},0)}
+function renderReports(){
+  $('#rday').value=S.day;
+  var ds=S.sales.filter(function(s){return s.day===S.day});
+  var rev=ds.reduce(function(a,s){return a+n(s.total)},0);
+  var cost=ds.reduce(function(a,s){return a+saleCost(s)},0);
+  var cash=ds.filter(function(s){return s.method==='Cash'}).reduce(function(a,s){return a+n(s.total)},0);
+  $('#kpis').innerHTML=
+    '<div class="kpi"><span>Sales</span><b class="num">'+ds.length+'</b></div>'+
+    '<div class="kpi"><span>Revenue</span><b class="num">'+fmt(rev)+'</b></div>'+
+    '<div class="kpi"><span>Estimated profit</span><b class="num">'+fmt(rev-cost)+'</b></div>'+
+    '<div class="kpi"><span>Cash / E-wallet</span><b class="num" style="font-size:16px">'+fmt(cash)+' / '+fmt(rev-cash)+'</b></div>';
+  /* last 7 days */
+  var days=[],i;for(i=6;i>=0;i--){days.push(dayOf(new Date(S.day+'T12:00:00').getTime()-i*864e5))}
+  var tot=days.map(function(d){return S.sales.filter(function(s){return s.day===d}).reduce(function(a,s){return a+n(s.total)},0)});
+  var mx=Math.max.apply(null,tot.concat([1]));
+  $('#bars').innerHTML=days.map(function(d,k){
+    var lab=new Date(d+'T12:00:00').toLocaleDateString([], {weekday:'short'});
+    return '<div class="bar'+(d===S.day?' sel':'')+'"><em class="num">'+(tot[k]?Math.round(tot[k]).toLocaleString():'')+'</em><i style="height:'+(tot[k]/mx*100)+'%"></i><small>'+lab+'</small></div>';
+  }).join('');
+  /* items sold */
+  var agg={};ds.forEach(function(s){(s.items||[]).forEach(function(it){var a=agg[it.id]||(agg[it.id]={name:it.name,unit:it.unit,qty:0,amt:0});a.qty+=n(it.qty);a.amt+=n(it.qty)*n(it.price)})});
+  var rows=Object.keys(agg).map(function(k){return agg[k]}).sort(function(a,b){return b.amt-a.amt});
+  $('#sold').innerHTML=rows.length?rows.map(function(r){return '<div class="li"><span>'+esc(r.name)+'<div class="mut num">'+qtyFmt(r.qty)+' '+esc(r.unit||'')+'</div></span><b class="num">'+fmt(r.amt)+'</b></div>'}).join(''):'<div class="empty">No sales on this day.</div>';
+  $('#receipts').innerHTML=ds.length?ds.map(function(s){return '<div class="li"><span><button class="lnk" data-rc="'+esc(s.id)+'">'+esc(s.no)+'</button><div class="mut">'+timeOf(s.ts)+' · '+esc(s.method)+(s.customer?' · '+esc(s.customer):'')+'</div></span><b class="num">'+fmt(s.total)+'</b></div>'}).join(''):'<div class="empty">No receipts on this day.</div>';
+  var low=S.products.filter(function(p){return status(p)!=='ok'});
+  $('#reorder').innerHTML=low.length?low.map(function(p){return '<div class="li"><span>'+esc(p.name)+'<div class="mut">Reorder at '+qtyFmt(p.reorder||0)+'</div></span>'+stockBadge(p)+'</div>'}).join(''):'<div class="empty">Everything is above its reorder level.</div>';
+  if(document.activeElement&&document.activeElement.closest&&!document.activeElement.closest('#setForm')){$('#sName').value=S.settings.shop;$('#sCur').value=S.settings.cur;$('#sAddr').value=S.settings.addr;$('#sPhone').value=S.settings.phone;$('#sFoot').value=S.settings.foot;$('#sPaper').value=S.settings.paper;$('#sAuto').checked=S.settings.auto}
+  
+}
+
+/* ---------- sale ---------- */
+function addToCart(id){
+  var p=prod(id);if(!p)return;
+  var l=S.cart.filter(function(x){return x.id===id})[0];
+  var have=l?l.qty:0;
+  if(have+1>n(p.stock)){toast('Only '+qtyFmt(p.stock)+' '+(p.unit||'')+' of '+p.name+' in stock');return}
+  if(l)l.qty=have+1;else S.cart.push({id:id,qty:1});
+  renderCart();
+}
+function setQty(id,q){
+  var p=prod(id),l=S.cart.filter(function(x){return x.id===id})[0];if(!p||!l)return;
+  q=n(q);if(q<=0){S.cart=S.cart.filter(function(x){return x!==l})}
+  else if(q>n(p.stock)){l.qty=n(p.stock);toast('Only '+qtyFmt(p.stock)+' in stock')}
+  else l.qty=q;
+  renderCart();
+}
+function receiptNo(ts){var d=new Date(ts);var y=String(d.getFullYear()).slice(2),m=('0'+(d.getMonth()+1)).slice(-2),dd=('0'+d.getDate()).slice(-2);
+  return 'R'+y+m+dd+'-'+Math.random().toString(36).slice(2,6).toUpperCase()}
+function receiptText(s){
+  var w=34,L=[];
+  function pad(a,b){a=String(a);b=String(b);var sp=Math.max(1,w-a.length-b.length);return a+new Array(sp+1).join(' ')+b}
+  L.push(S.settings.shop);if(S.settings.addr)L.push(S.settings.addr);if(S.settings.phone)L.push('Tel '+S.settings.phone);L.push('Receipt '+s.no);L.push(new Date(s.ts).toLocaleString());
+  if(s.customer)L.push('Customer: '+s.customer);
+  L.push(new Array(w+1).join('-'));
+  s.items.forEach(function(i){L.push(i.name);L.push(pad('  '+qtyFmt(i.qty)+' '+(i.unit||'')+' x '+fmt(i.price),fmt(i.qty*i.price)))});
+  L.push(new Array(w+1).join('-'));
+  L.push(pad('Subtotal',fmt(s.subtotal)));
+  if(s.discount>0)L.push(pad('Discount','-'+fmt(s.discount)));
+  L.push(pad('TOTAL',fmt(s.total)));
+  L.push(pad('Paid by',s.method));
+  if(s.method==='Cash'&&s.tendered>0){L.push(pad('Cash received',fmt(s.tendered)));L.push(pad('Change',fmt(s.change)))}
+  L.push('');L.push(S.settings.foot||'Thank you!');
+  return L.join('\n');
+}
+async function completeSale(){
+  if(!S.db||!S.canWrite){toast('Recording sales is not available here');return}
+  if(!S.cart.length){toast('Add an item first');return}
+  var t=cartTotals(),tend=n($('#tend').value);
+  if(S.method==='Cash'&&tend>0&&tend<t.total){toast('Cash received is less than the total');return}
+  var ts=Date.now();
+  var items=S.cart.map(function(l){var p=prod(l.id);return {id:p.id,name:p.name,unit:p.unit||'',qty:l.qty,price:n(p.price),cost:n(p.cost)}});
+  var sale={no:receiptNo(ts),ts:ts,day:dayOf(ts),items:items,subtotal:t.sub,discount:t.disc,total:t.total,method:S.method,
+    tendered:S.method==='Cash'?tend:0,change:S.method==='Cash'&&tend>t.total?tend-t.total:0,customer:$('#cust').value.trim()};
+  var btn=$('#doSale');btn.disabled=true;
+  try{
+    var ref=S.db.collection('sales').doc();
+    await ref.set(sale);
+    await Promise.all(items.map(function(i){var p=prod(i.id);return S.db.doc('products/'+i.id).update({stock:Math.max(0,n(p.stock)-i.qty)})}));
+    S.cart=[];$('#disc').value='';$('#tend').value='';$('#cust').value='';
+    renderCart();showReceipt(sale,true);if(S.canPrint&&S.settings.auto)printReceipt(sale);
+  }catch(e){toast('Could not save the sale ('+(e&&e.code||'error')+'). Check before retrying.')}
+  btn.disabled=false;
+}
+function showReceipt(s,fresh){
+  S.lastReceipt=s;
+  modal('<h2>'+(fresh?'Sale complete':'Receipt')+'</h2><div class="rcpt" id="rcptTxt">'+esc(receiptText(s))+'</div>'+
+    '<div class="foot"><button class="btn printbtn" id="prRc" type="button">Print</button><button class="btn" id="cpRc" type="button">Copy text</button><button class="btn primary" data-close type="button">Done</button></div>');
+  $('#cpRc').onclick=function(){
+    var txt=receiptText(s);
+    try{navigator.clipboard.writeText(txt).then(function(){toast('Receipt copied')},function(){sel()})}catch(e){sel()}
+    function sel(){var r=document.createRange();r.selectNodeContents($('#rcptTxt'));var g=getSelection();g.removeAllRanges();g.addRange(r);toast('Selected. Copy it from your keyboard or menu.')}
+  };
+}
+
+/* ---------- stock forms ---------- */
+function modal(html){var m=$('#modal');m.innerHTML=html;$('#ov').hidden=false;var f=m.querySelector('input,select');if(f)f.focus()}
+function closeModal(){$('#ov').hidden=true;$('#modal').innerHTML=''}
+function productForm(p){
+  p=p||{category:'Feed',unit:'sack',stock:0,reorder:5};
+  var opts=CATS.map(function(c){return '<option'+(p.category===c?' selected':'')+'>'+c+'</option>'}).join('');
+  modal('<h2>'+(p.id?'Edit item':'Add item')+'</h2><form id="pf">'+
+    '<div class="field"><label for="pf-name">Item name</label><input id="pf-name" required value="'+esc(p.name||'')+'"></div>'+
+    '<div class="two"><div class="field"><label for="pf-sku">SKU / code</label><input id="pf-sku" value="'+esc(p.sku||'')+'"></div>'+
+    '<div class="field"><label for="pf-cat">Category</label><select id="pf-cat">'+opts+'</select></div></div>'+
+    '<div class="two"><div class="field"><label for="pf-unit">Sold per</label><input id="pf-unit" required value="'+esc(p.unit||'')+'" placeholder="sack, kg, bottle, pc"></div>'+
+    '<div class="field"><label for="pf-stock">In stock</label><input id="pf-stock" type="number" step="any" min="0" value="'+n(p.stock)+'"></div></div>'+
+    '<div class="two"><div class="field"><label for="pf-price">Selling price</label><input id="pf-price" type="number" step="any" min="0" required value="'+(p.price!=null?n(p.price):'')+'"></div>'+
+    '<div class="field"><label for="pf-cost">Your cost</label><input id="pf-cost" type="number" step="any" min="0" value="'+(p.cost!=null?n(p.cost):'')+'"></div></div>'+
+    '<div class="field"><label for="pf-re">Reorder when stock reaches</label><input id="pf-re" type="number" step="any" min="0" value="'+n(p.reorder)+'"></div>'+
+    '<div class="foot">'+(p.id?'<button class="btn danger" type="button" id="pf-del" style="margin-right:auto">Delete</button>':'')+
+    '<button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Save</button></div></form>');
+  $('#pf').onsubmit=async function(ev){
+    ev.preventDefault();
+    var o={name:$('#pf-name').value.trim(),sku:$('#pf-sku').value.trim(),category:$('#pf-cat').value,unit:$('#pf-unit').value.trim(),
+      stock:n($('#pf-stock').value),price:n($('#pf-price').value),cost:n($('#pf-cost').value),reorder:n($('#pf-re').value)};
+    try{
+      if(p.id)await S.db.doc('products/'+p.id).update(o);else await S.db.collection('products').doc().set(o);
+      closeModal();toast('Saved');
+    }catch(e){toast(why(e))}
+  };
+  if(p.id){
+    var armed=false,b=$('#pf-del');
+    b.onclick=async function(){
+      if(!armed){armed=true;b.textContent='Tap again to delete';return}
+      try{await S.db.doc('products/'+p.id).delete();closeModal();toast('Item deleted')}catch(e){toast('Could not delete')}
+    };
+  }
+}
+function receiveForm(p){
+  modal('<h2>Receive stock</h2><p style="margin:0 0 12px;color:var(--muted)">'+esc(p.name)+' · now '+qtyFmt(p.stock)+' '+esc(p.unit||'')+'</p><form id="rf">'+
+    '<div class="two"><div class="field"><label for="rf-q">Quantity received</label><input id="rf-q" type="number" step="any" min="0" required></div>'+
+    '<div class="field"><label for="rf-c">New cost (optional)</label><input id="rf-c" type="number" step="any" min="0" placeholder="'+n(p.cost)+'"></div></div>'+
+    '<div class="foot"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Add to stock</button></div></form>');
+  $('#rf').onsubmit=async function(ev){
+    ev.preventDefault();
+    var q=n($('#rf-q').value);if(q<=0){toast('Enter a quantity');return}
+    var o={stock:n(prod(p.id).stock)+q},c=$('#rf-c').value;if(c!=='')o.cost=n(c);
+    try{await S.db.doc('products/'+p.id).update(o);closeModal();toast('Added '+qtyFmt(q)+' '+(p.unit||''))}catch(e){toast(why(e))}
+  };
+}
+/* ---------- Print ---------- */
+function settingsFromForm(){
+  return {shop:$('#sName').value.trim()||'Dtrax Poultry Supply',cur:$('#sCur').value.trim()||'₱',
+    addr:$('#sAddr').value.trim(),phone:$('#sPhone').value.trim(),foot:$('#sFoot').value.trim(),
+    paper:$('#sPaper').value||'80',auto:$('#sAuto').checked};
+}
+function doPrint(html,paper,extra){
+  if(!S.canPrint){toast('Printing works in the offline app');return}
+  var a=$('#printArea');a.className='pa p-'+paper+(extra?' '+extra:'');a.innerHTML=html;
+  $('#pageStyle').textContent=paper==='A4'?'@page{size:A4;margin:12mm}':'@page{size:'+paper+'mm auto;margin:2mm}';
+  setTimeout(function(){try{window.print()}catch(e){toast('Printing is not available here')}},60);
+}
+window.addEventListener('afterprint',function(){var a=$('#printArea');if(a)a.innerHTML=''});
+function pdate(ts){return new Date(ts).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}
+function tbl(head,rows,right){
+  return '<table><thead><tr>'+head.map(function(h,i){return '<th'+(right.indexOf(i)>-1?' class="r"':'')+'>'+esc(h)+'</th>'}).join('')+'</tr></thead><tbody>'+
+    rows.map(function(r){return '<tr>'+r.map(function(c,i){return '<td'+(right.indexOf(i)>-1?' class="r"':'')+'>'+c+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table>';
+}
+function printReceipt(s){
+  var st=S.settings,h='<div class="rc"><div class="c"><b style="font-size:1.3em">'+esc(st.shop)+'</b>'+(st.addr?'<div>'+esc(st.addr)+'</div>':'')+(st.phone?'<div>Tel '+esc(st.phone)+'</div>':'')+'</div><hr>'+
+    '<div>Receipt '+esc(s.no)+'</div><div>'+esc(pdate(s.ts))+'</div>'+(s.customer?'<div>Customer: '+esc(s.customer)+'</div>':'')+'<hr>';
+  (s.items||[]).forEach(function(i){h+='<div class="it">'+esc(i.name)+'</div><div class="row"><span>'+qtyFmt(i.qty)+' '+esc(i.unit||'')+' x '+fmt(i.price)+'</span><span>'+fmt(i.qty*i.price)+'</span></div>'});
+  h+='<hr><div class="row"><span>Subtotal</span><span>'+fmt(s.subtotal)+'</span></div>';
+  if(s.discount>0)h+='<div class="row"><span>Discount</span><span>-'+fmt(s.discount)+'</span></div>';
+  h+='<div class="row" style="font-weight:700;font-size:1.2em"><span>TOTAL</span><span>'+fmt(s.total)+'</span></div><div class="row"><span>Paid by</span><span>'+esc(s.method)+'</span></div>';
+  if(s.method==='Cash'&&s.tendered>0)h+='<div class="row"><span>Cash received</span><span>'+fmt(s.tendered)+'</span></div><div class="row"><span>Change</span><span>'+fmt(s.change)+'</span></div>';
+  h+='<hr><div class="c">'+esc(st.foot||'Thank you!')+'</div></div>';
+  doPrint(h,st.paper||'80');
+}
+function printDay(){
+  var ds=S.sales.filter(function(s){return s.day===S.day});
+  if(!ds.length){toast('No sales on this day');return}
+  var t=totalsOf(ds),agg={};
+  ds.forEach(function(s){(s.items||[]).forEach(function(it){var a=agg[it.id]||(agg[it.id]={name:it.name,unit:it.unit,qty:0,amt:0});a.qty+=n(it.qty);a.amt+=n(it.qty)*n(it.price)})});
+  var sold=Object.keys(agg).map(function(k){return agg[k]}).sort(function(a,b){return b.amt-a.amt});
+  var low=S.products.filter(function(p){return status(p)!=='ok'});
+  var h='<h1>'+esc(S.settings.shop)+'</h1><div class="meta">Daily sales report for '+esc(new Date(S.day+'T12:00:00').toLocaleDateString([], {dateStyle:'full'}))+'. Printed '+esc(pdate(Date.now()))+'.</div>'+
+    '<div class="kp"><div>Sales<b>'+ds.length+'</b></div><div>Revenue<b>'+fmt(t.rev)+'</b></div><div>Estimated profit<b>'+fmt(t.profit)+'</b></div><div>Cash<b>'+fmt(t.cash)+'</b></div><div>E-wallet<b>'+fmt(t.wallet)+'</b></div></div>'+
+    '<h2>Items sold</h2>'+tbl(['Item','Quantity','Amount'],sold.map(function(r){return [esc(r.name),qtyFmt(r.qty)+' '+esc(r.unit||''),fmt(r.amt)]}),[1,2])+
+    '<h2>Receipts</h2>'+tbl(['Receipt','Time','Customer','Payment','Total'],ds.slice().reverse().map(function(r){return [esc(r.no),esc(timeOf(r.ts)),esc(r.customer||''),esc(r.method),fmt(r.total)]}),[4]);
+  if(low.length)h+='<h2>Needs reorder</h2>'+tbl(['Item','In stock','Reorder at'],low.map(function(p){return [esc(p.name),qtyFmt(p.stock)+' '+esc(p.unit||''),qtyFmt(p.reorder||0)]}),[1,2]);
+  doPrint(h,'A4');
+}
+function printStock(count){
+  var list=S.products.filter(function(p){return matches(p,S.sq)&&(!S.lowOnly||status(p)!=='ok')});
+  if(!list.length){toast('No items to print');return}
+  var val=list.reduce(function(a,p){return a+n(p.cost)*n(p.stock)},0);
+  var h='<h1>'+esc(S.settings.shop)+'</h1><div class="meta">'+(count?'Stock count sheet':(S.lowOnly?'Items to reorder':'Stock list'))+'. '+list.length+' items. Printed '+esc(pdate(Date.now()))+'.'+(count?'':' Stock value at cost '+esc(fmt(val))+'.')+'</div>';
+  if(count)h+=tbl(['Item','SKU','Unit','In system','Counted','Difference'],list.map(function(p){return [esc(p.name),esc(p.sku||''),esc(p.unit||''),qtyFmt(p.stock),'&nbsp;','&nbsp;']}),[3]);
+  else h+=tbl(['Item','SKU','Category','Unit','Price','In stock','Reorder at','Status'],list.map(function(p){var st=status(p);return [esc(p.name),esc(p.sku||''),esc(p.category||''),esc(p.unit||''),fmt(p.price),qtyFmt(p.stock),qtyFmt(p.reorder||0),st==='out'?'Out':(st==='low'?'Reorder':'OK')]}),[4,5,6]);
+  doPrint(h,'A4',count?'cnt':'');
+}
+
+/* ---------- Excel ---------- */
+var HDR=['Item','SKU','Category','Unit','Price','Cost','In stock','Reorder at'];
+var ALIAS={
+  name:['item','itemname','name','product','productname','description'],
+  sku:['sku','code','itemcode','barcode'],
+  category:['category','type','group'],
+  unit:['unit','uom','soldper','unitofmeasure'],
+  price:['price','sellingprice','srp','retailprice'],
+  cost:['cost','unitcost','yourcost','buyingprice','capital'],
+  stock:['instock','stock','qty','quantity','onhand','stockonhand'],
+  reorder:['reorderat','reorder','reorderlevel','reorderpoint','minimum','min']
+};
+function xReady(){
+  if(!window.XLSX){toast('Excel tools did not load. Check your connection and reload the page.');return false}
+  if(!S.dl){toast('Saving files is not available in this view');return false}
+  return true;
+}
+function colw(ws,w){ws['!cols']=w.map(function(x){return {wch:x}})}
+async function saveBook(wb,name){
+  var buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  try{await S.dl.save({filename:name,data:buf});toast('Saved '+name)}
+  catch(e){if(!e||e.code!=='declined')toast('Could not save the file')}
+}
+function stockSheet(){
+  var rows=[HDR.concat(['Stock value (cost)','Status'])],tot=0;
+  S.products.forEach(function(p,i){
+    var r=i+2,val=n(p.cost)*n(p.stock),st=n(p.stock)<=0?'Out':(n(p.stock)<=n(p.reorder)?'Reorder':'OK');
+    tot+=val;
+    rows.push([p.name,p.sku||'',p.category||'',p.unit||'',n(p.price),n(p.cost),n(p.stock),n(p.reorder),
+      {t:'n',v:val,f:'F'+r+'*G'+r},{t:'s',v:st,f:'IF(G'+r+'<=0,"Out",IF(G'+r+'<=H'+r+',"Reorder","OK"))'}]);
+  });
+  if(S.products.length)rows.push(['Total','','','','','','','',{t:'n',v:tot,f:'SUM(I2:I'+(S.products.length+1)+')'},'']);
+  var ws=XLSX.utils.aoa_to_sheet(rows);colw(ws,[34,12,12,10,10,10,10,11,18,10]);return ws;
+}
+function salesSheet(list){
+  var rows=[['Receipt','Date','Time','Customer','Payment','Item','Unit','Qty','Price','Line total']];
+  list.slice().reverse().forEach(function(s){(s.items||[]).forEach(function(i){
+    var r=rows.length+1;
+    rows.push([s.no,s.day,timeOf(s.ts),s.customer||'',s.method,i.name,i.unit||'',n(i.qty),n(i.price),{t:'n',v:n(i.qty)*n(i.price),f:'H'+r+'*I'+r}]);
+  })});
+  var ws=XLSX.utils.aoa_to_sheet(rows);colw(ws,[16,12,10,18,10,32,8,8,10,12]);return ws;
+}
+function soldSheet(list){
+  var agg={};list.forEach(function(s){(s.items||[]).forEach(function(it){var a=agg[it.id]||(agg[it.id]={name:it.name,unit:it.unit,qty:0,amt:0});a.qty+=n(it.qty);a.amt+=n(it.qty)*n(it.price)})});
+  var rows=[['Item','Unit','Quantity sold','Amount']];
+  Object.keys(agg).map(function(k){return agg[k]}).sort(function(a,b){return b.amt-a.amt}).forEach(function(r){rows.push([r.name,r.unit||'',r.qty,r.amt])});
+  var ws=XLSX.utils.aoa_to_sheet(rows);colw(ws,[34,8,14,12]);return ws;
+}
+function totalsOf(list){
+  var rev=list.reduce(function(a,s){return a+n(s.total)},0),cost=list.reduce(function(a,s){return a+saleCost(s)},0);
+  var cash=list.filter(function(s){return s.method==='Cash'}).reduce(function(a,s){return a+n(s.total)},0);
+  return {rev:rev,profit:rev-cost,cash:cash,wallet:rev-cash};
+}
+async function exportStock(){
+  if(!xReady())return;
+  if(!S.products.length){toast('No items to export yet');return}
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,stockSheet(),'Stock');
+  await saveBook(wb,'dtrax-stock-'+dayOf(Date.now())+'.xlsx');
+}
+async function exportTemplate(){
+  if(!xReady())return;
+  var ws=XLSX.utils.aoa_to_sheet([HDR,['Layer Pellets (50 kg)','FD-003','Feed','sack',1520,1350,15,6],['Poultry Vitamins (100 g)','HL-001','Health','pack',85,60,30,10]]);
+  colw(ws,[34,12,12,10,10,10,10,11]);
+  var nt=XLSX.utils.aoa_to_sheet([['How to use'],['Fill one row per item on the Stock sheet. Item and Price are needed for new items.'],['Category is Feed, Health, Equipment or Other.'],['Existing items are matched by SKU first, then by name, and updated.'],['Leave a column out to keep the current value for that field.']]);
+  colw(nt,[90]);
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Stock');XLSX.utils.book_append_sheet(wb,nt,'Notes');
+  await saveBook(wb,'dtrax-stock-template.xlsx');
+}
+async function exportDay(){
+  if(!xReady())return;
+  var ds=S.sales.filter(function(s){return s.day===S.day});
+  if(!ds.length){toast('No sales on this day');return}
+  var t=totalsOf(ds);
+  var sum=XLSX.utils.aoa_to_sheet([[S.settings.shop],['Daily report',S.day],[],['Sales',ds.length],['Revenue',t.rev],['Estimated profit',t.profit],['Cash',t.cash],['E-wallet',t.wallet]]);
+  colw(sum,[20,22]);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sum,'Summary');XLSX.utils.book_append_sheet(wb,salesSheet(ds),'Sales');XLSX.utils.book_append_sheet(wb,soldSheet(ds),'Items sold');
+  await saveBook(wb,'dtrax-sales-'+S.day+'.xlsx');
+}
+async function exportAll(){
+  if(!xReady())return;
+  var byDay={};S.sales.forEach(function(s){var d=byDay[s.day]||(byDay[s.day]=[]);d.push(s)});
+  var rows=[['Date','Sales','Revenue','Estimated profit']];
+  Object.keys(byDay).sort().forEach(function(d){var t=totalsOf(byDay[d]);rows.push([d,byDay[d].length,t.rev,t.profit])});
+  var dt=XLSX.utils.aoa_to_sheet(rows);colw(dt,[12,8,14,16]);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,stockSheet(),'Stock');XLSX.utils.book_append_sheet(wb,salesSheet(S.sales),'Sales');XLSX.utils.book_append_sheet(wb,dt,'Daily totals');
+  await saveBook(wb,'dtrax-backup-'+dayOf(Date.now())+'.xlsx');
+}
+function normKey(k){return String(k).toLowerCase().replace(/[^a-z0-9]/g,'')}
+function readImport(file){
+  if(!window.XLSX){toast('Excel tools did not load. Check your connection and reload the page.');return}
+  var fr=new FileReader();
+  fr.onerror=function(){toast('Could not read that file')};
+  fr.onload=function(){
+    var wb;try{wb=XLSX.read(new Uint8Array(fr.result),{type:'array'})}catch(e){toast('That is not a readable Excel or CSV file');return}
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    planImport(XLSX.utils.sheet_to_json(ws,{defval:''}),file.name);
+  };
+  fr.readAsArrayBuffer(file);
+}
+function planImport(rows,fname){
+  if(!rows.length){toast('No rows found in that file');return}
+  var keys=Object.keys(rows[0]),map={};
+  Object.keys(ALIAS).forEach(function(f){keys.some(function(k){if(ALIAS[f].indexOf(normKey(k))>-1){map[f]=k;return true}return false})});
+  if(!map.name){toast('No "Item" column found. Use the Excel template for the right headings.');return}
+  var bySku={},byName={};
+  S.products.forEach(function(p){if(p.sku)bySku[String(p.sku).toLowerCase()]=p;byName[String(p.name).toLowerCase()]=p});
+  var plan=[],idx={},skipped=0;
+  rows.slice(0,500).forEach(function(r){
+    var name=String(r[map.name]).trim();if(!name){skipped++;return}
+    var o={name:name};
+    if(map.sku&&String(r[map.sku]).trim())o.sku=String(r[map.sku]).trim();
+    if(map.category){var c=String(r[map.category]).trim();if(c)o.category=CATS.filter(function(x){return x.toLowerCase()===c.toLowerCase()})[0]||'Other'}
+    if(map.unit&&String(r[map.unit]).trim())o.unit=String(r[map.unit]).trim();
+    ['price','cost','stock','reorder'].forEach(function(f){
+      if(map[f]&&r[map[f]]!==''){var v=parseFloat(String(r[map[f]]).replace(/[^0-9.\-]/g,''));if(isFinite(v))o[f]=Math.max(v,0)}
+    });
+    var ex=(o.sku&&bySku[o.sku.toLowerCase()])||byName[name.toLowerCase()];
+    if(ex&&o.sku&&String(ex.sku||'').toLowerCase()===o.sku.toLowerCase())delete o.sku;
+    if(!ex&&o.price==null&&!o.unit){skipped++;return}
+    var key=ex?ex.id:'new:'+(o.sku||name).toLowerCase();
+    if(idx[key]!=null)Object.assign(plan[idx[key]].o,o);else{idx[key]=plan.length;plan.push({ex:ex,o:o})}
+  });
+  if(!plan.length){toast('No usable rows found in that file');return}
+  var adds=plan.filter(function(p){return !p.ex}).length,upd=plan.length-adds;
+  var names=plan.slice(0,5).map(function(p){return esc(p.o.name)}).join(', ')+(plan.length>5?' and '+(plan.length-5)+' more':'');
+  modal('<h2>Import from Excel</h2><p class="note">'+esc(fname)+'</p>'+
+    '<p style="margin:0 0 10px"><b class="num">'+adds+'</b> new '+(adds===1?'item':'items')+', <b class="num">'+upd+'</b> to update'+(skipped?', '+skipped+' rows skipped':'')+'.</p>'+
+    '<p class="note">'+names+'</p><form id="impf">'+
+    (map.stock?'<div class="field"><label for="imp-mode">Stock quantities</label><select id="imp-mode"><option value="set">Set stock to the quantity in the file</option><option value="add">Add the file quantity to current stock</option></select></div>':'')+
+    '<div class="foot"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit" id="impGo">Import</button></div></form>');
+  $('#impf').onsubmit=async function(ev){
+    ev.preventDefault();
+    var mode=$('#imp-mode')?$('#imp-mode').value:'set',ok=0,bad=0;
+    $('#impGo').disabled=true;$('#impGo').textContent='Importing…';
+    for(var i=0;i<plan.length;i++){
+      var it=plan[i],o=Object.assign({},it.o);
+      try{
+        if(it.ex){
+          if(o.stock!=null&&mode==='add')o.stock=n(it.ex.stock)+o.stock;
+          await S.db.doc('products/'+it.ex.id).update(o);
+        }else{
+          await S.db.collection('products').doc().set(Object.assign({category:'Other',unit:'pc',sku:'',stock:0,price:0,cost:0,reorder:0},o));
+        }
+        ok++;
+      }catch(e){bad++}
+    }
+    closeModal();toast(bad?('Imported '+ok+', '+bad+' failed'):('Imported '+ok+(ok===1?' item':' items')));
+  };
+}
+
+/* ---------- events ---------- */
+function setTab(t){
+  if(['sell','stock','reports'].indexOf(t)<0)t='sell';
+  S.tab=t;
+  ['sell','stock','reports'].forEach(function(k){$('#v-'+k).hidden=k!==t});
+  document.querySelectorAll('.tab').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.tab===t))});
+  try{if(location.hash.slice(1)!==t)location.hash=t}catch(e){}
+  updateTotals();
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('button,[data-close]');if(!t)return;
+  var d=t.dataset;
+  if(d.tab)return setTab(d.tab);
+  if(d.cat){S.cat=d.cat;renderCats();return renderGrid()}
+  if(d.add)return addToCart(d.add);
+  if(d.inc){var l=S.cart.filter(function(x){return x.id===d.inc})[0];if(l)setQty(d.inc,l.qty+1);return}
+  if(d.dec){var l2=S.cart.filter(function(x){return x.id===d.dec})[0];if(l2)setQty(d.dec,l2.qty-1);return}
+  if(d.rm){S.cart=S.cart.filter(function(x){return x.id!==d.rm});return renderCart()}
+  if(d.m){S.method=d.m;document.querySelectorAll('#method button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.m===S.method))});return updateTotals()}
+  if(d.act==='addp')return productForm();
+  if(d.edit){var p=prod(d.edit);if(p)productForm(p);return}
+  if(d.recv){var p2=prod(d.recv);if(p2)receiveForm(p2);return}
+  if(d.rc){var s=S.sales.filter(function(x){return x.id===d.rc})[0];if(s)showReceipt(s,false);return}
+  if(t.hasAttribute('data-close'))return closeModal();
+  if(t.id==='clearCart'){S.cart=[];$('#disc').value='';$('#tend').value='';return renderCart()}
+  if(t.id==='doSale')return completeSale();
+  if(t.id==='lowOnly'){S.lowOnly=!S.lowOnly;t.setAttribute('aria-pressed',String(S.lowOnly));return renderStock()}
+  if(t.id==='goCart'){$('#cartcol').scrollIntoView({behavior:'smooth',block:'start'});return}
+  if(t.id==='exportXlsx')return exportDay();
+  if(t.id==='exportAll')return exportAll();
+  if(t.id==='prRc'){if(S.lastReceipt)printReceipt(S.lastReceipt);return}
+  if(t.id==='prDay')return printDay();
+  if(t.id==='prList')return printStock(false);
+  if(t.id==='prCount')return printStock(true);
+  if(t.id==='expStock')return exportStock();
+  if(t.id==='tplX')return exportTemplate();
+  if(t.id==='impX'){$('#fileX').click();return}
+  if(t.id==='rmEx'){
+    if(!t.dataset.armed){t.dataset.armed='1';t.textContent='Tap again to remove';return}
+    delete t.dataset.armed;t.textContent='Remove example items';
+    Promise.all(S.products.filter(function(p){return p.example}).map(function(p){return S.db.doc('products/'+p.id).delete()})).then(function(){toast('Example items removed')},function(){toast('Could not remove')});
+  }
+});
+$('#ov').addEventListener('mousedown',function(e){if(e.target===$('#ov'))closeModal()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('#ov').hidden)closeModal()});
+$('#q').addEventListener('input',function(e){S.q=e.target.value;renderGrid()});
+$('#sq').addEventListener('input',function(e){S.sq=e.target.value;renderStock()});
+$('#disc').addEventListener('input',updateTotals);$('#tend').addEventListener('input',updateTotals);
+$('#cartLines').addEventListener('change',function(e){if(e.target.dataset.qty)setQty(e.target.dataset.qty,e.target.value)});
+$('#fileX').addEventListener('change',function(e){var fl=e.target.files&&e.target.files[0];if(fl)readImport(fl);e.target.value=''});
+$('#rday').addEventListener('change',function(e){if(e.target.value){S.day=e.target.value;renderReports()}});
+$('#setForm').addEventListener('submit',async function(e){
+  e.preventDefault();
+  try{await S.db.doc('settings/shop').set(settingsFromForm());toast('Settings saved')}catch(x){toast('Could not save settings')}
+});
+window.addEventListener('hashchange',function(){setTab(location.hash.slice(1))});
+
+/* ---------- init ---------- */
+var blobDl={save:function(r){return new Promise(function(res,rej){try{var bl=r.data instanceof Blob?r.data:new Blob([r.data],{type:'application/octet-stream'});var u=URL.createObjectURL(bl),a=document.createElement('a');a.href=u;a.download=r.filename;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);res({status:'saved'})}catch(e){rej(e)}})}};
+var deferredInstall=null;
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredInstall=e;var bt=document.getElementById('installBtn');if(bt)bt.hidden=false});
+window.addEventListener('appinstalled',function(){deferredInstall=null;var bt=document.getElementById('installBtn');if(bt)bt.hidden=true});
+document.getElementById('installBtn').addEventListener('click',function(){if(!deferredInstall)return;deferredInstall.prompt();deferredInstall.userChoice.then(function(){deferredInstall=null;document.getElementById('installBtn').hidden=true})});
+async function init(){
+  setTab(location.hash.slice(1)||'sell');renderAll();
+  var c=window.claude;
+  try{S.db=c&&c.use?await c.use('db'):null}catch(e){S.db=null}
+  try{var u=c&&c.use?await c.use('user'):null;if(u&&u.can){var w=await u.can('data.write');if(w===false)S.canWrite=false}}catch(e){}
+  try{S.dl=c&&c.use?await c.use('downloads'):null}catch(e){S.dl=null}
+  if(!S.dl)S.dl=blobDl;
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  if(!S.canWrite)document.body.classList.add('ro');
+  document.body.classList.toggle('no-print',!S.canPrint);
+  if(!S.db){S.db=makeLocalDb();S.local=true}
+  renderStore();renderBanner();
+  subscribe();
+}
+init();
+if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});
+})();
+</script>
+
+</body></html>
